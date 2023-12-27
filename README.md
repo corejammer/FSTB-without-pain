@@ -34,3 +34,75 @@ console.log(package_json()) // <путь к скрипту>/node_modules/fstb/pa
 Here again, what's so special, just ordinary JavaScript tricks. But then I thought – instead of returning just a path, why not return an object that has all the necessary methods for working with files and directories.
 
 So, the FSTB library was born – it stands for **F**ile**S**ystem **T**ool**B**ox.
+
+## Trying it out
+Let's install FSTB:
+```
+npm i fstb
+```
+And we'll plug it into the project:
+```
+const fstb = require('fstb');
+```
+To form a path to a file, you can use the FSPath function or one of the shortcuts: `cwd`, `dirname`, `home`, or `tmp` (see the documentation for more details). You can also pull paths from environment variables using the `envPath` method.
+
+Reading text from a file:
+```
+fstb.cwd["README.md"]().asFile().read.txt().then(txt=>console.log(txt));
+```
+FSTB operates on promises, so you can use it with async/await in your code:
+```
+(async function() {
+  const package_json = await fstb.cwd["package.json"]().asFile().read.json();
+  console.log(package_json);
+})();
+```
+Here we deserialize JSON from a file. In my opinion, it's concise; with one line, we explain where it is, what's inside, and what to do with it.
+
+If I were to write this using standard functions, it would look something like this:
+```
+const fs = require("fs/promises");
+const path = require("path");
+
+(async function() {
+  const package_json_path = path.join(process.cwd(), "package.json");
+  const file_content = await fs.readFile(package_json_path, "utf8");
+  const result = JSON.parse(file_content);
+  console.log(result);
+})();
+```
+This is certainly not the code to be proud of, but in this example, you can see how verbose working with files can be using the standard library.
+
+Another example. Let's say you need to read a text file line by line. I don't even need to come up with an example; here's one from the Node.js documentation:
+```
+const fs = require('fs');
+const readline = require('readline');
+
+async function processLineByLine() {
+  const fileStream = fs.createReadStream('input.txt');
+
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity
+  });
+  // Note: we use the crlfDelay option to recognize all instances of CR LF
+  // ('\r\n') in input.txt as a single line break.
+
+  for await (const line of rl) {
+    // Each line in input.txt will be successively available here as `line`.
+    console.log(`Line from file: ${line}`);
+  }
+}
+processLineByLine();
+```
+Now let's try to do this using FSTB:
+```
+(async function() {
+  await fstb.cwd['package.json']()
+    .asFile()
+    .read.lineByLine()
+    .forEach(line => console.log(`Line from file: ${line}`));
+})();
+```
+
+Yes, yes, I'm a cheater. The library has this function, and under the hood, it uses the same code from the documentation. But what's interesting here is that its output implements an iterator that can do `filter`, `map`, `reduce`, etc. So, if you need to, for example, read CSV, just add `.map(line => line.split(','))`.
